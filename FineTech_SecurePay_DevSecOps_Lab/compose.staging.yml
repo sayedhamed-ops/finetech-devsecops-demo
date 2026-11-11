@@ -1,0 +1,22 @@
+# OPTIONAL: for a later Linux Docker Engine / Compose staging lab.
+# Do not use Docker Desktop. Does not connect to production.
+services:
+  api:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DEMO_API_TOKEN: "${DEMO_API_TOKEN:?Set a local demo token in your shell}"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=2)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

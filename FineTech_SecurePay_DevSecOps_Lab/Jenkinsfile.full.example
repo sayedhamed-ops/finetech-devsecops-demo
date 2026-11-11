@@ -1,0 +1,28 @@
+// PLANNED stages only: Gitleaks + Trivy require separate installation and policy.
+// Do not use this as a production release pipeline without threat review, isolated
+// agents, trusted release management, pinning tools, and credentials separation.
+pipeline {
+    agent { label 'security-linux' }
+    options { timestamps(); timeout(time: 30, unit: 'MINUTES') }
+    stages {
+        stage('Checkout') { steps { checkout scm } }
+        stage('Secret Scan') {
+            steps { sh 'gitleaks dir . --redact --no-banner' }
+        }
+        stage('SAST') {
+            steps { sh 'semgrep scan --config .semgrep.yml --metrics=off --error app' }
+        }
+        stage('Dependencies') {
+            steps { sh 'trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 .' }
+        }
+        stage('Tests') {
+            steps {
+                sh '''set -eu
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/pytest -q
+'''
+            }
+        }
+    }
+}

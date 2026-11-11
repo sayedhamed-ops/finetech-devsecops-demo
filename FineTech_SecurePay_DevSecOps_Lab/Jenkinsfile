@@ -1,0 +1,33 @@
+// Stage 1 lab: runs tests and Semgrep on the already configured local Jenkins.
+// Use a dedicated isolated Linux agent and trusted SCM source for real systems.
+pipeline {
+    agent any
+    options {
+        timestamps()
+        timeout(time: 15, unit: 'MINUTES')
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Install Lab Dependencies') {
+            steps {
+                sh '''set -eu
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+'''
+            }
+        }
+        stage('Unit and Financial Logic Tests') {
+            steps { sh '.venv/bin/pytest -q' }
+        }
+        stage('Semgrep SAST') {
+            steps {
+                sh '/home/sayed/finetech-semgrep/bin/semgrep scan --config .semgrep.yml --metrics=off --error app'
+            }
+        }
+        stage('Security Gate') {
+            steps { echo 'PASS: lab tests and Semgrep checks passed.' }
+        }
+    }
+}
